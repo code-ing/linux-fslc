@@ -34,7 +34,7 @@
 		compatible = "gpio-fan";
 		gpios = <&gpio2 23 1>;
 		gpio-fan,speed-map = <0    0>,
-                         <5000 1>;
+                		     <5000 1>;
     		cooling-min-state = <0>;
     		cooling-max-state = <1>;
     		#cooling-cells = <2>;
