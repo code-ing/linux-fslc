@@ -224,6 +224,7 @@ _UpdateModuleParam(
     showArgs          = Param->showArgs;
     contiguousRequested = Param->contiguousRequested;
     gpu3DMinClock     = Param->gpu3DMinClock;
+    gpu3DMaxClock     = Param->gpu3DMaxClock;
 }
 
 void
