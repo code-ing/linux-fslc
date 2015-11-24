@@ -61,7 +61,7 @@ extern int unregister_thermal_notifier(struct notifier_block *nb);
 #define UNREG_THERMAL_NOTIFIER(a) unregister_thermal_notifier(a);
 #endif
 
-static int initgpu3DMinClock = 1;
+static int initgpu3DMinClock = 5;
 module_param(initgpu3DMinClock, int, 0644);
 
 struct platform_device *pdevice;
@@ -241,8 +241,8 @@ static int thermal_hot_pm_notify(struct notifier_block *nb, unsigned long event,
         bAlreadyTooHot = gcvTRUE;
         gckOS_Print("System is too hot. GPU3D will work at %d/64 clock.\n", minFscale);
     } else if (!event && bAlreadyTooHot) {
-        gckHARDWARE_SetFscaleValue(hardware, orgFscale);
-        gckOS_Print("Hot alarm is canceled. GPU3D clock will return to %d/64\n", orgFscale);
+        gckHARDWARE_SetFscaleValue(hardware, maxFscale);
+        gckOS_Print("Hot alarm is canceled. GPU3D clock will return to %d/64\n", maxFscale);
         bAlreadyTooHot = gcvFALSE;
     }
     return NOTIFY_OK;
@@ -251,6 +251,42 @@ static int thermal_hot_pm_notify(struct notifier_block *nb, unsigned long event,
 static struct notifier_block thermal_hot_pm_notifier = {
     .notifier_call = thermal_hot_pm_notify,
     };
+
+static ssize_t show_gpu3DMaxClock(struct device_driver *dev, char *buf)
+{
+    gctUINT currentf,minf,maxf;
+    gckGALDEVICE galDevice;
+
+    galDevice = platform_get_drvdata(pdevice);
+    if(galDevice->kernels[gcvCORE_MAJOR])
+    {
+         gckHARDWARE_GetFscaleValue(galDevice->kernels[gcvCORE_MAJOR]->hardware,
+            &currentf, &minf, &maxf);
+    }
+    snprintf(buf, PAGE_SIZE, "%d\n", maxf);
+    return strlen(buf);
+}
+
+static ssize_t update_gpu3DMaxClock(struct device_driver *dev, const char *buf, size_t count)
+{
+
+    gctINT fields;
+    gctUINT MaxFscaleValue;
+    gckGALDEVICE galDevice;
+    galDevice = platform_get_drvdata(pdevice);
+    if(galDevice->kernels[gcvCORE_MAJOR])
+    {
+         fields = sscanf(buf, "%d", &MaxFscaleValue);
+         if (fields < 1)
+             return -EINVAL;
+         gckOS_Print("MaxGPU3D clock set to %d/64\n", MaxFscaleValue);
+         gckHARDWARE_SetFscaleValue(galDevice->kernels[gcvCORE_MAJOR]->hardware,MaxFscaleValue);
+    }
+
+    return count;
+}
+
+static DRIVER_ATTR(gpu3DMaxClock, S_IRUGO | S_IWUSR, show_gpu3DMaxClock, update_gpu3DMaxClock);
 
 static ssize_t show_gpu3DMinClock(struct device_driver *dev, char *buf)
 {
@@ -444,6 +480,7 @@ _GetPower(
 {
     struct device* pdev = &Platform->device->dev;
     struct imx_priv *priv = Platform->priv;
+    int ret=0;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
     struct reset_control *rstc;
 #endif
@@ -530,9 +567,13 @@ _GetPower(
 
 #if gcdENABLE_FSCALE_VAL_ADJUST
     pdevice = Platform->device;
+    ret = driver_create_file(pdevice->dev.driver, &driver_attr_gpu3DMaxClock);
+    if(ret)
+        dev_err(&pdevice->dev, "create gpu3DMaxClock attr failed (%d)\n", ret);
+
     REG_THERMAL_NOTIFIER(&thermal_hot_pm_notifier);
     {
-        int ret = 0;
+        ret = 0;
         ret = driver_create_file(pdevice->dev.driver, &driver_attr_gpu3DMinClock);
         if(ret)
             dev_err(&pdevice->dev, "create gpu3DMinClock attr failed (%d)\n", ret);
@@ -593,6 +634,7 @@ _PutPower(
     UNREG_THERMAL_NOTIFIER(&thermal_hot_pm_notifier);
 
     driver_remove_file(pdevice->dev.driver, &driver_attr_gpu3DMinClock);
+    driver_remove_file(pdevice->dev.driver, &driver_attr_gpu3DMaxClock);
 #endif
 
     return gcvSTATUS_OK;
