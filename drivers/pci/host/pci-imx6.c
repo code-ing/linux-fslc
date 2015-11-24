@@ -276,9 +276,6 @@ static int imx6_pcie_assert_core_reset(struct pcie_port *pp)
 			val |= PCIE_PL_PFLR_FORCE_LINK;
 			writel(val, pp->dbi_base + PCIE_PL_PFLR);
 
-			usleep_range(30, 50);
-
-			/* clear GPR12.10: APP_LTSSM_ENABLE - hold LTSSM in detect state */
 			regmap_update_bits(imx6_pcie->iomuxc_gpr, IOMUXC_GPR12,
 					IMX6Q_GPR12_PCIE_CTL_2, 0);
 		}
@@ -299,7 +296,11 @@ static int imx6_pcie_deassert_core_reset(struct pcie_port *pp)
 	int ret;
 
 	if (gpio_is_valid(imx6_pcie->power_on_gpio))
+	{
+		gpio_set_value(imx6_pcie->power_on_gpio, 0);
+		mdelay(200);
 		gpio_set_value(imx6_pcie->power_on_gpio, 1);
+	}
 
 	request_bus_freq(BUS_FREQ_HIGH);
 	ret = clk_prepare_enable(imx6_pcie->pcie_phy);
@@ -361,7 +362,7 @@ static int imx6_pcie_deassert_core_reset(struct pcie_port *pp)
 	/* Some boards don't have PCIe reset GPIO. */
 	if (gpio_is_valid(imx6_pcie->reset_gpio)) {
 		gpio_set_value_cansleep(imx6_pcie->reset_gpio, 0);
-		mdelay(100);
+		mdelay(150);
 		gpio_set_value_cansleep(imx6_pcie->reset_gpio, 1);
 	}
 
@@ -442,7 +443,7 @@ static int imx6_pcie_init_phy(struct pcie_port *pp)
 
 static int imx6_pcie_wait_for_link(struct pcie_port *pp)
 {
-	int count = 200;
+	int count = 5000;
 
 	while (!dw_pcie_link_up(pp)) {
 		udelay(100);
