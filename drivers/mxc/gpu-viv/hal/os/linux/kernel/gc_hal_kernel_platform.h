@@ -59,6 +59,7 @@ typedef struct _gcsMODULE_PARAMETERS
     gctUINT stuckDump;
     gctUINT showArgs;
     gctUINT gpu3DMinClock;
+    gctUINT gpu3DMaxClock;
 }
 gcsMODULE_PARAMETERS;
 
