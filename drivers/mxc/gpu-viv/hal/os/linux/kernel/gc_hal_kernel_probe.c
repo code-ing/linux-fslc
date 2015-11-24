@@ -154,8 +154,6 @@ module_param(showArgs, int, 0644);
 static int mmu = 1;
 module_param(mmu, int, 0644);
 
-static int gpu3DMinClock = 1;
-
 static int contiguousRequested = 0;
 
 static int drv_open(
