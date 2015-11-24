@@ -133,6 +133,12 @@ module_param(physSize, ulong, 0644);
 static uint logFileSize = 0;
 module_param(logFileSize,uint, 0644);
 
+int gpu3DMinClock = 5;
+module_param(gpu3DMinClock, int, 0644);
+
+int gpu3DMaxClock = 64;
+module_param(gpu3DMaxClock, int, 0644);
+
 static uint recovery = 1;
 module_param(recovery, uint, 0644);
 MODULE_PARM_DESC(recovery, "Recover GPU from stuck (1: Enable, 0: Disable)");
